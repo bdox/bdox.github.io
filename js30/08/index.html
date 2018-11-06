@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, user-scalable=no, maximum-scale=1.0" />
+  <title>HTML5 Canvas</title>
+</head>
+<body>
+<canvas id="draw" width="800" height="800"></canvas>
+<script>
+  const canvas = document.getElementById('draw');
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  const ctx = canvas.getContext('2d');
+  ctx.strokeStyle = 'black';
+  ctx.lineJoin = 'round';
+  ctx.lineCap = 'round';
+
+  let isDrawing = false;
+  let lastX = 0;
+  let lastY = 0;
+  let hue = 0;
+  let direction = true;
+
+  const isTouch = e => e.type.includes('touch');
+  const getTouch = e => isTouch(e) ? e.targetTouches[0] : null;
+  const getForce = e => isTouch(e) ? (getTouch(e).force * 100 || 1) : 1;
+  function getOffset(e) {
+    if(isTouch(e)) {
+      const touch = getTouch(e);
+      return [touch.clientX, touch.clientY];
+    }
+    else {
+      return [e.offsetX, e.offsetY];
+    }
+  }
+
+  function init(e) {
+    isDrawing = true;
+    [lastX, lastY] = getOffset(e);
+  }
+
+  function draw(e) {
+    if (!isDrawing) return; // stop the fn from running when they are not moused down
+    ctx.strokeStyle = `hsl(${hue}, 100%, 50%)`;
+    ctx.beginPath();
+    // start from
+    ctx.moveTo(lastX, lastY);
+
+    const [x, y] = getOffset(e);
+    // go to
+    ctx.lineTo(x, y);
+    ctx.stroke();
+    [lastX, lastY] = [x, y];
+
+    hue++;
+    if (hue >= 360) {
+      hue = 0;
+    }
+
+    if(isTouch(e)) {
+      ctx.lineWidth = getForce(e)
+    } else {
+      if (ctx.lineWidth >= 100 || ctx.lineWidth <= 1) {
+        direction = !direction;
+      }
+      if(direction) {
+        ctx.lineWidth++;
+      } else {
+        ctx.lineWidth--;
+      }
+    }
+  }
+
+  canvas.addEventListener('mousedown', init);
+  canvas.addEventListener('touchstart', init);
+  canvas.addEventListener('mousemove', draw);
+  canvas.addEventListener('touchmove', draw);
+  canvas.addEventListener('mouseup', () => isDrawing = false);
+  canvas.addEventListener('mouseout', () => isDrawing = false);
+  canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    isDrawing = false
+  });
+  canvas.addEventListener('touchcancel', () => isDrawing = false);
+
+  window.addEventListener("resize", (e) => {
+    const newWindow = e.target;
+    if((newWindow.innerHeight > newWindow.innerWidth && canvas.height< canvas.width) ||
+      (newWindow.innerHeight < newWindow.innerWidth && canvas.height > canvas.width)) {
+      const tempCanvas = document.createElement("canvas"),
+        tempCtx = tempCanvas.getContext("2d"); // new temp canvas and context
+      [tempCanvas.width, tempCanvas.height] = [canvas.width, canvas.height]; // set w/h using existing canvas
+      tempCtx.drawImage(canvas, 0, 0, canvas.width, canvas.height); // draw existing canvas onto temp
+      [canvas.height, canvas.width] = [window.innerHeight, window.innerWidth]; // Update w/h on existing canvas to  match window
+      ctx.setTransform(0, 1, -1, 0, canvas.width, 0); // transform origin
+      ctx.drawImage(tempCanvas, 0, 0); // draw the temp canvas back onto existing canvas
+      ctx.setTransform(1, 0, 0, 1, 0, 0); // transoform
+      ctx.lineJoin = 'round'; // not sure why these need to be set again...
+      ctx.lineCap = 'round';
+    }
+  });
+
+</script>
+
+<style>
+  html, body {
+    margin: 0;
+    overflow: hidden;
+  }
+  body {
+    position: fixed;
+    max-height: 100vh;
+  }
+</style>
+
+</body>
+</html>
